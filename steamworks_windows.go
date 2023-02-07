@@ -308,3 +308,12 @@ func (s steamUserStats) StoreStats() bool {
 
 	return byte(v) != 0
 }
+
+func (s steamUserStats) ResetAllStats() bool {
+	v, err := theDLL.call(flatAPI_ISteamUserStats_ResetAllStats, uintptr(s))
+	if err != nil {
+		panic(err)
+	}
+
+	return byte(v) != 0
+}

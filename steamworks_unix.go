@@ -459,3 +459,12 @@ func (s steamUserStats) StoreStats() bool {
 
 	return byte(v) != 0
 }
+
+func (s steamUserStats) ResetAllStats() bool {
+	v, err := theLib.call(funcType_Bool_Ptr, flatAPI_ISteamUserStats_ResetAllStats, uintptr(s))
+	if err != nil {
+		panic(err)
+	}
+
+	return byte(v) != 0
+}

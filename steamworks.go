@@ -64,6 +64,7 @@ type ISteamUserStats interface {
 	SetAchievement(name string) bool
 	ClearAchievement(name string) bool
 	StoreStats() bool
+	ResetAllStats() bool
 }
 
 const (
@@ -96,4 +97,5 @@ const (
 	flatAPI_ISteamUserStats_SetAchievement      = "SteamAPI_ISteamUserStats_SetAchievement"
 	flatAPI_ISteamUserStats_ClearAchievement    = "SteamAPI_ISteamUserStats_ClearAchievement"
 	flatAPI_ISteamUserStats_StoreStats          = "SteamAPI_ISteamUserStats_StoreStats"
+	flatAPI_ISteamUserStats_ResetAllStats       = "SteamAPI_ISteamUserStats_ResetAllStats"
 )
