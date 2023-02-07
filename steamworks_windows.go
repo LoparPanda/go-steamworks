@@ -267,7 +267,7 @@ func (s steamUserStats) GetAchievement(name string) (achieved, success bool) {
 	cname := append([]byte(name), 0)
 	defer runtime.KeepAlive(cname)
 
-	v, err := theDLL.call(flatAPI_ISteamUserStats_SetAchievement, uintptr(s), uintptr(unsafe.Pointer(&cname[0])), uintptr(unsafe.Pointer(&achieved)))
+	v, err := theDLL.call(flatAPI_ISteamUserStats_GetAchievement, uintptr(s), uintptr(unsafe.Pointer(&cname[0])), uintptr(unsafe.Pointer(&achieved)))
 	if err != nil {
 		panic(err)
 	}
@@ -310,12 +310,19 @@ func (s steamUserStats) StoreStats() bool {
 }
 
 func (s steamUserStats) ResetAllStats() bool {
-	v, err := theDLL.call(flatAPI_ISteamUserStats_ResetAllStats, uintptr(s))
+	v, err := theDLL.call(flatAPI_ISteamUserStats_ResetAllStats, uintptr(s), 1)
 	if err != nil {
 		panic(err)
 	}
 
 	return byte(v) != 0
+}
+
+func ReleaseCurrentThreadMemory() {
+	_, err := theDLL.call(flatAPI_ReleaseCurrentThreadMemory)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func getHSteamPipe() (hSteamPipe, error) {
@@ -331,12 +338,17 @@ func manualDispatchInit() error {
 	return err
 }
 
-func (h hSteamPipe) manualDispatchGetNextCallback(msg *callbackmsg) (bool, error) {
-	v, err := theDLL.call(flatAPI_ManualDispatch_GetNextCallback, uintptr(h), uintptr(unsafe.Pointer(msg)))
+func (h hSteamPipe) manualDispatchGetNextCallback(buf *[callbackmsgSize]byte) (bool, error) {
+	v, err := theDLL.call(flatAPI_ManualDispatch_GetNextCallback, uintptr(h), uintptr(unsafe.Pointer(&(*buf)[0])))
 	if err != nil {
 		return false, err
 	}
 	return byte(v) != 0, nil
+}
+
+func (h hSteamPipe) manualDispatchRunFrame() error {
+	_, err := theDLL.call(flatAPI_ManualDispatch_RunFrame, uintptr(h))
+	return err
 }
 
 func (h hSteamPipe) manualDispatchFreeLastCallback() error {

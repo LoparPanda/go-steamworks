@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"reflect"
 	"unsafe"
 )
 
-type callbackID int
-type EResult int
+type callbackID int32
+type EResult int32
 
 const (
 	k_iSteamUserStatsCallbacks callbackID = 1100
@@ -21,8 +22,8 @@ const (
 	EResultFail         = 2 // Generic failure
 )
 
-type hSteamPipe int
-type hSteamUser int
+type hSteamPipe int32
+type hSteamUser int32
 type steamApiCall uint64
 
 type Callbacks struct {
@@ -30,23 +31,19 @@ type Callbacks struct {
 }
 
 type callbackmsg struct {
-	user             hSteamUser
-	callbackID       callbackID
-	callbackData     *byte
-	callbackDataSize int
+	User             hSteamUser
+	CallbackID       callbackID
+	CallbackData     uintptr
+	CallbackDataSize int32
 }
 
-type apiCallCompleted struct {
-	asyncCall  steamApiCall
-	callbackID int
-	paramSize  uint32
-}
+// Space for 32- or 64-bit struct.
+const callbackmsgSize = 20
 
 // Dispatch implements a high-level wrapper over the manual dispatch loop for handling Steam callbacks.
 // If this is used, RunCallbacks must NOT be used.
 type Dispatch struct {
-	pipe hSteamPipe
-	cb   *Callbacks
+	cb *Callbacks
 }
 
 // NewDispatch creates a new handler for Steam callback dispatch.
@@ -55,39 +52,65 @@ func NewDispatch(cb *Callbacks) (*Dispatch, error) {
 	if err := manualDispatchInit(); err != nil {
 		return nil, err
 	}
-	pipe, err := getHSteamPipe()
-	if err != nil {
-		return nil, err
-	}
-
 	return &Dispatch{
-		pipe: pipe,
-		cb:   cb,
+		cb: cb,
 	}, nil
 }
 
 func (m *Dispatch) ProcessCallbacks() error {
+	pipe, err := getHSteamPipe()
+	if err != nil {
+		return fmt.Errorf("SteamPipe: %w", err)
+	}
+
+	if err := pipe.manualDispatchRunFrame(); err != nil {
+		return fmt.Errorf("Steam RunFrame: %w", err)
+	}
+
 	var hasCallback bool
-	var err error
+	var buf [callbackmsgSize]byte
 	msg := callbackmsg{}
 	for {
-		if hasCallback, err = m.pipe.manualDispatchGetNextCallback(&msg); hasCallback && err == nil {
-			defer m.pipe.manualDispatchFreeLastCallback()
-			r := bytes.NewReader(unsafe.Slice(msg.callbackData, msg.callbackDataSize))
-			switch msg.callbackID {
+		if hasCallback, err = pipe.manualDispatchGetNextCallback(&buf); hasCallback && err == nil {
+			{
+				r := bytes.NewReader(buf[:])
+				// Temporary message to use proper primitive types.
+				tmp := struct {
+					User             int32
+					CallbackID       int32
+					CallbackData     uint64
+					CallbackDataSize int32
+				}{}
+				if err := binary.Read(r, binary.LittleEndian, &tmp); err != nil {
+					return err
+				}
+				msg.User = hSteamUser(tmp.User)
+				msg.CallbackID = callbackID(tmp.CallbackID)
+				msg.CallbackData = uintptr(tmp.CallbackData)
+				msg.CallbackDataSize = tmp.CallbackDataSize
+			}
+			var cbData []byte
+			hdr := (*reflect.SliceHeader)((unsafe.Pointer(&cbData)))
+			hdr.Cap = int(msg.CallbackDataSize)
+			hdr.Len = int(msg.CallbackDataSize)
+			hdr.Data = uintptr(msg.CallbackData)
+
+			r := bytes.NewReader(cbData)
+			switch msg.CallbackID {
 			case callbackUserStatsReceived:
 				if m.cb.UserStatsReceived != nil {
 					var gameID uint64
 					var result EResult
 					var user CSteamID
 					for _, f := range []any{&gameID, &result, &user} {
-						if err := binary.Read(r, binary.BigEndian, f); err != nil {
+						if err := binary.Read(r, binary.LittleEndian, f); err != nil {
 							return fmt.Errorf("UserStatsReceived: %w", err)
 						}
 					}
 					m.cb.UserStatsReceived(gameID, result, user)
 				}
 			}
+			pipe.manualDispatchFreeLastCallback()
 		} else {
 			break
 		}

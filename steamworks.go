@@ -105,4 +105,6 @@ const (
 	flatAPI_ManualDispatch_GetNextCallback  = "SteamAPI_ManualDispatch_GetNextCallback"
 	flatAPI_ManualDispatch_FreeLastCallback = "SteamAPI_ManualDispatch_FreeLastCallback"
 	flatAPI_ManualDispatch_GetAPICallResult = "SteamAPI_ManualDispatch_GetAPICallResult"
+
+	flatAPI_ReleaseCurrentThreadMemory = "SteamAPI_ReleaseCurrentThreadMemory"
 )
