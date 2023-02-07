@@ -317,3 +317,29 @@ func (s steamUserStats) ResetAllStats() bool {
 
 	return byte(v) != 0
 }
+
+func getHSteamPipe() (hSteamPipe, error) {
+	pipe, err := theDLL.call(flatAPI_GetHSteamPipe)
+	if err != nil {
+		return 0, err
+	}
+	return hSteamPipe(pipe), nil
+}
+
+func manualDispatchInit() error {
+	_, err := theDLL.call(flatAPI_ManualDispatch_Init)
+	return err
+}
+
+func (h hSteamPipe) manualDispatchGetNextCallback(msg *callbackmsg) (bool, error) {
+	v, err := theDLL.call(flatAPI_ManualDispatch_GetNextCallback, uintptr(h), uintptr(unsafe.Pointer(msg)))
+	if err != nil {
+		return false, err
+	}
+	return byte(v) != 0, nil
+}
+
+func (h hSteamPipe) manualDispatchFreeLastCallback() error {
+	_, err := theDLL.call(flatAPI_ManualDispatch_FreeLastCallback, uintptr(h))
+	return err
+}

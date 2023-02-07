@@ -98,4 +98,11 @@ const (
 	flatAPI_ISteamUserStats_ClearAchievement    = "SteamAPI_ISteamUserStats_ClearAchievement"
 	flatAPI_ISteamUserStats_StoreStats          = "SteamAPI_ISteamUserStats_StoreStats"
 	flatAPI_ISteamUserStats_ResetAllStats       = "SteamAPI_ISteamUserStats_ResetAllStats"
+
+	flatAPI_GetHSteamPipe                   = "SteamAPI_GetHSteamPipe"
+	flatAPI_ManualDispatch_Init             = "SteamAPI_ManualDispatch_Init"
+	flatAPI_ManualDispatch_RunFrame         = "SteamAPI_ManualDispatch_RunFrame"
+	flatAPI_ManualDispatch_GetNextCallback  = "SteamAPI_ManualDispatch_GetNextCallback"
+	flatAPI_ManualDispatch_FreeLastCallback = "SteamAPI_ManualDispatch_FreeLastCallback"
+	flatAPI_ManualDispatch_GetAPICallResult = "SteamAPI_ManualDispatch_GetAPICallResult"
 )
