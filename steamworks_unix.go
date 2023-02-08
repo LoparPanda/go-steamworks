@@ -93,6 +93,10 @@ import (
 //   ((void (*)())(f))();
 // }
 //
+// static void callFunc_Void_Ptr(uintptr_t f, uintptr_t arg0) {
+//   ((void (*)())(f))(arg0);
+// }
+//
 // static void callFunc_Void_Ptr_Bool(uintptr_t f, uintptr_t arg0, uint8_t arg1) {
 //   ((void (*)(void*, bool))(f))((void*)arg0, (bool)arg1);
 // }
@@ -123,6 +127,7 @@ const (
 	funcType_Ptr
 	funcType_Ptr_Ptr
 	funcType_Void
+	funcType_Void_Ptr
 	funcType_Void_Ptr_Bool
 )
 
@@ -169,6 +174,9 @@ func (l *lib) call(ftype funcType, name string, args ...uintptr) (C.uint64_t, er
 		return C.uint64_t(C.callFunc_Ptr(f)), nil
 	case funcType_Ptr_Ptr:
 		return C.uint64_t(C.callFunc_Ptr_Ptr(f, C.uintptr_t(args[0]))), nil
+	case funcType_Void_Ptr:
+		C.callFunc_Void_Ptr(f, C.uintptr_t(args[0]))
+		return 0, nil
 	case funcType_Void:
 		C.callFunc_Void(f)
 		return 0, nil
@@ -467,4 +475,42 @@ func (s steamUserStats) ResetAllStats() bool {
 	}
 
 	return byte(v) != 0
+}
+
+func ReleaseCurrentThreadMemory() {
+	_, err := theLib.call(funcType_Void, flatAPI_ReleaseCurrentThreadMemory)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func getHSteamPipe() (hSteamPipe, error) {
+	pipe, err := theLib.call(funcType_Ptr, flatAPI_GetHSteamPipe)
+	if err != nil {
+		return 0, err
+	}
+	return hSteamPipe(pipe), nil
+}
+
+func manualDispatchInit() error {
+	_, err := theLib.call(funcType_Void, flatAPI_ManualDispatch_Init)
+	return err
+}
+
+func (h hSteamPipe) manualDispatchGetNextCallback(buf *[callbackmsgSize]byte) (bool, error) {
+	v, err := theLib.call(funcType_Bool_Ptr_Ptr, flatAPI_ManualDispatch_GetNextCallback, uintptr(h), uintptr(unsafe.Pointer(&(*buf)[0])))
+	if err != nil {
+		return false, err
+	}
+	return byte(v) != 0, nil
+}
+
+func (h hSteamPipe) manualDispatchRunFrame() error {
+	_, err := theLib.call(funcType_Void_Ptr, flatAPI_ManualDispatch_RunFrame, uintptr(h))
+	return err
+}
+
+func (h hSteamPipe) manualDispatchFreeLastCallback() error {
+	_, err := theLib.call(funcType_Void_Ptr, flatAPI_ManualDispatch_FreeLastCallback, uintptr(h))
+	return err
 }
