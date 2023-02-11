@@ -65,6 +65,10 @@ import (
 //   return ((int32_t (*)(void*, int32_t, void*, int32_t))(f))((void*)arg0, arg1, (void*)arg2, arg3);
 // }
 //
+// static int32_t callFunc_Int32_Int32_Ptr_Int32(uintptr_t f, int32_t arg0, uintptr_t arg1, int32_t arg2) {
+//   return ((int32_t (*)(int32_t, void*, int32_t))(f))(arg0, (void*) arg1, arg2);
+// }
+//
 // static int32_t callFunc_Int32_Ptr_Int64(uintptr_t f, uintptr_t arg0, int64_t arg1) {
 //   return ((int32_t (*)(void*, int64_t))(f))((void*)arg0, arg1);
 // }
@@ -117,6 +121,7 @@ const (
 	funcType_Bool_Ptr_Ptr_Ptr
 	funcType_Bool_Ptr_Ptr_Ptr_Int32
 	funcType_Bool_Int32
+	funcType_Int32_Int32_Ptr_Int32
 	funcType_Int32_Int64
 	funcType_Int32_Ptr
 	funcType_Int32_Ptr_Int32_Ptr_Int32
@@ -266,12 +271,15 @@ func SteamApps() ISteamApps {
 type steamApps C.uintptr_t
 
 func (s steamApps) GetAppInstallDir(appID AppId_t) string {
-	var path [4096]byte
-	v, err := theLib.call(funcType_Int32_Ptr_Int32_Ptr_Int32, flatAPI_ISteamApps_GetAppInstallDir, uintptr(s), uintptr(appID), uintptr(unsafe.Pointer(&path[0])), uintptr(len(path)))
+	buf := C.malloc(4096)
+	defer C.free(buf)
+	v, err := theLib.call(funcType_Int32_Ptr_Int32_Ptr_Int32, flatAPI_ISteamApps_GetAppInstallDir, uintptr(s), uintptr(appID), uintptr(buf), 4096)
 	if err != nil {
 		panic(err)
 	}
-	return string(path[:uint32(v)-1])
+	cSlice := (*[1 << 30]C.char)(buf)
+	cSlice[v] = 0
+	return C.GoString(C.uintptrToChar(C.ulong(uintptr(buf))))
 }
 
 func (s steamApps) GetCurrentGameLanguage() string {
